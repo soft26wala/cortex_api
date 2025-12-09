@@ -29,6 +29,6 @@ const startServer = async () => {
 startServer();
 
 app.get
-const port = process.env.MYPORT
+const PORT = process.env.PORT || 4000;
 
-app.listen(port, () => console.log("Server running on :" , port));
+app.listen(PORT, () => console.log("Server running on :" , PORT));
