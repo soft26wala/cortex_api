@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS buy_course (
+  buy_id SERIAL PRIMARY KEY,
+  course_name VARCHAR(255) NOT NULL,
+  user_id INT NOT NULL,
+  validity DATE DEFAULT (CURRENT_DATE + INTERVAL '6 months'),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

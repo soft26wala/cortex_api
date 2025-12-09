@@ -1,0 +1,126 @@
+// routes/courseRoutes.js
+import express from "express";
+import multer from "multer";
+import path from "path";
+import { connectDB } from "../db/db.js";
+
+const router = express.Router();
+let db;
+
+// Connect DB (PostgreSQL)
+(async () => {
+  db = await connectDB();
+})();
+
+// Multer for file upload
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + path.extname(file.originalname);
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({ storage });
+
+// ======================================================
+// ADD COURSE (PostgreSQL Version)
+// ======================================================
+router.post("/", upload.single("course_image"), async (req, res) => {
+  try {
+    const { course_name, course_desc, course_price } = req.body;
+    const imageName = req.file ? req.file.filename : null;
+
+    const sql = `
+      INSERT INTO courses_offered
+      (course_name, course_desc, course_price, course_image)
+      VALUES ($1, $2, $3, $4)
+      RETURNING course_id;
+    `;
+
+    const result = await db.query(sql, [
+      course_name,
+      course_desc,
+      course_price,
+      imageName
+    ]);
+
+    return res.json({
+      message: "Course added successfully",
+      course_id: result.rows[0].course_id,
+      image_url: imageName ? `/uploads/${imageName}` : null
+    });
+
+  } catch (err) {
+    console.log("Error:", err);
+    return res.status(500).send(err);
+  }
+});
+
+// ======================================================
+// GET ALL COURSES
+// ======================================================
+router.get("/all", async (req, res) => {
+  try {
+    const sql = "SELECT * FROM courses_offered ORDER BY course_id DESC";
+    const result = await db.query(sql);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+// ======================================================
+// GET SINGLE COURSE
+// ======================================================
+router.get("/:id", async (req, res) => {
+  try {
+    const sql = "SELECT * FROM courses_offered WHERE course_id = $1";
+    const result = await db.query(sql, [req.params.id]);
+    res.json(result.rows[0] || {});
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+// ======================================================
+// UPDATE COURSE (NO IMAGE CHANGE)
+// ======================================================
+router.put("/:id", async (req, res) => {
+  try {
+    const { course_name, course_desc, course_price } = req.body;
+    const sql = `
+      UPDATE courses_offered
+      SET course_name = $1, course_desc = $2, course_price = $3
+      WHERE course_id = $4
+    `;
+    await db.query(sql, [
+      course_name,
+      course_desc,
+      course_price,
+      req.params.id
+    ]);
+
+    res.json({ message: "Course updated successfully" });
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+// ======================================================
+// DELETE COURSE
+// ======================================================
+router.delete("/:id", async (req, res) => {
+  try {
+    await db.query("DELETE FROM courses_offered WHERE course_id = $1", [
+      req.params.id
+    ]);
+    res.json({ message: "Course deleted successfully" });
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+export default router;
