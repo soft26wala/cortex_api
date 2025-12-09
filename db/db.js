@@ -14,17 +14,17 @@ const __dirname = path.dirname(__filename);
 export async function connectDB() {
   // Step 1: Connect to root database (postgres)
   const root = new Client({
-    host: process.env.HOST,
-    user: process.env.USER,
-    password: process.env.PASSWORD,
-    port: process.env.PORT,
+   host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
     database: "postgres", // root DB
   });
 
   await root.connect();
 
   // Step 2: Create database if not exists (Postgres way)
-  const dbName = process.env.DATABASE;
+  const dbName = process.env.DB_NAME;
 
   const checkDBQuery = `SELECT 1 FROM pg_database WHERE datname='${dbName}'`;
   const result = await root.query(checkDBQuery);
@@ -40,10 +40,10 @@ export async function connectDB() {
 
   // Step 3: Connect to target database
   const db = new Client({
-    host: process.env.HOST,
-    user: process.env.USER,
-    password: process.env.PASSWORD,
-    port: process.env.PORT,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
     database: dbName,
   });
 
