@@ -54,16 +54,19 @@ export async function connectDB() {
   const users = path.join(__dirname, "user.sql");
   const courses_offered = path.join(__dirname, "courses_offered.sql");
   const callback = path.join(__dirname, "callback.sql");
+  const student = path.join(__dirname, "student.sql");
 
   const schema = fs.readFileSync(buy_course, "utf8");
   const schema1 = fs.readFileSync(users, "utf8");
   const schema2 = fs.readFileSync(courses_offered, "utf8");
   const schema3 = fs.readFileSync(callback, "utf8");
+  const schema4 = fs.readFileSync(student, "utf8");
 
   await db.query(schema); // buy_course.sql
   await db.query(schema1); // users.sql
   await db.query(schema2); // courses_offered.sql
   await db.query(schema3); // callback.sql
+  await db.query(schema4); // student.sql
 
   console.log("✅ All tables created on PostgreSQL!");
 

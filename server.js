@@ -3,6 +3,7 @@ import { connectDB } from "./db/db.js";
 import courseRoutes from './routes/courseRoutes.js'
 import user from './routes/user.js'
 import callback from './routes/callback.js'
+import student from './routes/student.js'
 import cors from 'cors'
 import { configDotenv } from "dotenv";
 configDotenv()
@@ -19,6 +20,7 @@ app.use(cors({
 app.use('/uploads', express.static('uploads'));
 app.use("/add-course", courseRoutes)
 app.use("/callback", callback)
+app.use("/students", student)
 app.use("/user", user)
 let db;
 
