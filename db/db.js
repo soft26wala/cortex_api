@@ -12,85 +12,60 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function connectDB() {
-    let rootClient;
-    let dbClient;
+  // Step 1: Connect to root database (postgres)
+  const root = new Client({
+   host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: "postgres", // root DB
+  });
 
-    // --- Configuration from URL ---
-    // Render se DATABASE_URL variable lo
-    const dbURL = process.env.DATABASE_URL; 
-    
-    if (!dbURL) {
-        console.error("❌ Environment variable DATABASE_URL is missing!");
-        throw new Error("Missing Database URL Configuration");
-    }
+  await root.connect();
 
-    // Target database ka naam URL ke end se nikalna
-    const dbName = dbURL.substring(dbURL.lastIndexOf('/') + 1); 
-    
-    // Root connection URL banane ke liye: Target DB name ko 'postgres' se replace karein
-    const rootURL = dbURL.replace(`/${dbName}`, '/postgres');
+  // Step 2: Create database if not exists (Postgres way)
+  const dbName = process.env.DB_NAME;
 
-    try {
-        // Step 1: Connect to the root database (postgres)
-        // Client connection string se sab details nikal lega
-        rootClient = new Client({ connectionString: rootURL }); 
+  const checkDBQuery = `SELECT 1 FROM pg_database WHERE datname='${dbName}'`;
+  const result = await root.query(checkDBQuery);
 
-        await rootClient.connect();
-        console.log("✅ Connected to root database (postgres).");
+  if (result.rowCount === 0) {
+    await root.query(`CREATE DATABASE ${dbName}`);
+    console.log(`📦 Database '${dbName}' created!`);
+  } else {
+    console.log(`📦 Database '${dbName}' already exists!`);
+  }
 
-        // Step 2: Create target database if it doesn't exist
-        const checkDBQuery = `SELECT 1 FROM pg_database WHERE datname='${dbName}'`;
-        const result = await rootClient.query(checkDBQuery);
+  await root.end();
 
-        if (result.rowCount === 0) {
-            await rootClient.query(`CREATE DATABASE ${dbName}`);
-            console.log(`📦 Database '${dbName}' created!`);
-        } else {
-            console.log(`📦 Database '${dbName}' already exists!`);
-        }
+  // Step 3: Connect to target database
+  const db = new Client({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: dbName,
+  });
 
-        await rootClient.end();
-        
-        // Step 3: Connect to the target database
-        dbClient = new Client({ connectionString: dbURL }); // Original URL use karein
+  await db.connect();
 
-        await dbClient.connect();
-        console.log(`✅ Successfully connected to target database: ${dbName}`);
+  // Step 4: Auto table creation (Postgres executes entire SQL)
+  const buy_course = path.join(__dirname, "buy_course.sql");
+  const users = path.join(__dirname, "user.sql");
+  const courses_offered = path.join(__dirname, "courses_offered.sql");
+  const callback = path.join(__dirname, "callback.sql");
 
-        // Step 4: Auto table creation (your original logic)
-        const sqlFiles = [
-            "buy_course.sql",
-            "user.sql",
-            "courses_offered.sql",
-            "callback.sql",
-        ];
+  const schema = fs.readFileSync(buy_course, "utf8");
+  const schema1 = fs.readFileSync(users, "utf8");
+  const schema2 = fs.readFileSync(courses_offered, "utf8");
+  const schema3 = fs.readFileSync(callback, "utf8");
 
-        for (const file of sqlFiles) {
-            const filePath = path.join(__dirname, file);
-            if (fs.existsSync(filePath)) {
-                const schema = fs.readFileSync(filePath, "utf8");
-                await dbClient.query(schema);
-            } else {
-                console.warn(`⚠️ Warning: SQL file not found: ${file}`);
-            }
-        }
+  await db.query(schema); // buy_course.sql
+  await db.query(schema1); // users.sql
+  await db.query(schema2); // courses_offered.sql
+  await db.query(schema3); // callback.sql
 
-        console.log("✅ All necessary tables created/verified on PostgreSQL!");
+  console.log("✅ All tables created on PostgreSQL!");
 
-        return dbClient; // Return the active connection client
-
-    } catch (error) {
-        console.error("🛑 FATAL DATABASE CONNECTION ERROR:", error.message);
-        
-        // Clean up open clients
-        if (rootClient) {
-            try { await rootClient.end(); } catch (e) { /* ignore */ }
-        }
-        if (dbClient) {
-            try { await dbClient.end(); } catch (e) { /* ignore */ }
-        }
-        
-        // Propagate error
-        throw error;
-    }
+  return db;
 }
