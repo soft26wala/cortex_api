@@ -6,66 +6,109 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { configDotenv } from "dotenv";
 
+// 1. .env variables load karein (Agar locally chala rahe hain toh)
 configDotenv();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function connectDB() {
-  // Step 1: Connect to root database (postgres)
-  const root = new Client({
-   host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: "postgres", // root DB
-  });
+    let rootClient;
+    let dbClient;
 
-  await root.connect();
+    const dbHost = process.env.DB_HOST;
+    const dbPort = process.env.DB_PORT;
+    const dbUser = process.env.DB_USER;
+    const dbPass = process.env.DB_PASS;
+    const dbName = process.env.DB_NAME;
 
-  // Step 2: Create database if not exists (Postgres way)
-  const dbName = process.env.DB_NAME;
+    if (!dbHost || !dbPort || !dbUser || !dbPass || !dbName) {
+        console.error("❌ Environment variables (DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME) are missing!");
+        throw new Error("Missing Database Configuration");
+    }
 
-  const checkDBQuery = `SELECT 1 FROM pg_database WHERE datname='${dbName}'`;
-  const result = await root.query(checkDBQuery);
+    try {
+        // Step 1: Connect to the root/default database (usually 'postgres')
+        // NOTE: Agar Glacier Hosting 'postgres' database ka access nahi deta,
+        // toh yahan 'postgres' ki jagah seedha dbName use karein.
+        rootClient = new Client({
+            host: dbHost,
+            port: dbPort,
+            user: dbUser,
+            password: dbPass,
+            database: "postgres", // Attempt to connect to default DB
+        });
 
-  if (result.rowCount === 0) {
-    await root.query(`CREATE DATABASE ${dbName}`);
-    console.log(`📦 Database '${dbName}' created!`);
-  } else {
-    console.log(`📦 Database '${dbName}' already exists!`);
-  }
+        await rootClient.connect();
+        console.log("✅ Connected to root database (postgres).");
 
-  await root.end();
+        // Step 2: Create target database if it doesn't exist
+        const checkDBQuery = `SELECT 1 FROM pg_database WHERE datname='${dbName}'`;
+        const result = await rootClient.query(checkDBQuery);
 
-  // Step 3: Connect to target database
-  const db = new Client({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-    database: dbName,
-  });
+        if (result.rowCount === 0) {
+            await rootClient.query(`CREATE DATABASE ${dbName}`);
+            console.log(`📦 Database '${dbName}' created!`);
+        } else {
+            console.log(`📦 Database '${dbName}' already exists!`);
+        }
 
-  await db.connect();
+        await rootClient.end();
+        
+        // Step 3: Connect to the target database
+        dbClient = new Client({
+            host: dbHost,
+            port: dbPort,
+            user: dbUser,
+            password: dbPass,
+            database: dbName, // Connect to the specific DB
+        });
 
-  // Step 4: Auto table creation (Postgres executes entire SQL)
-  const buy_course = path.join(__dirname, "buy_course.sql");
-  const users = path.join(__dirname, "user.sql");
-  const courses_offered = path.join(__dirname, "courses_offered.sql");
-  const callback = path.join(__dirname, "callback.sql");
+        await dbClient.connect();
+        console.log(`✅ Successfully connected to target database: ${dbName}`);
 
-  const schema = fs.readFileSync(buy_course, "utf8");
-  const schema1 = fs.readFileSync(users, "utf8");
-  const schema2 = fs.readFileSync(courses_offered, "utf8");
-  const schema3 = fs.readFileSync(callback, "utf8");
+        // Step 4: Auto table creation
+        const sqlFiles = [
+            "buy_course.sql",
+            "user.sql",
+            "courses_offered.sql",
+            "callback.sql",
+        ];
 
-  await db.query(schema); // buy_course.sql
-  await db.query(schema1); // users.sql
-  await db.query(schema2); // courses_offered.sql
-  await db.query(schema3); // callback.sql
+        for (const file of sqlFiles) {
+            const filePath = path.join(__dirname, file);
+            if (fs.existsSync(filePath)) {
+                const schema = fs.readFileSync(filePath, "utf8");
+                await dbClient.query(schema);
+            } else {
+                console.warn(`⚠️ Warning: SQL file not found: ${file}`);
+            }
+        }
 
-  console.log("✅ All tables created on PostgreSQL!");
+        console.log("✅ All necessary tables created/verified on PostgreSQL!");
 
-  return db;
+        return dbClient; // Return the active connection client
+
+    } catch (error) {
+        console.error("🛑 FATAL DATABASE CONNECTION ERROR:", error.message);
+        
+        // Agar password authentication fail hota hai
+        if (error.code === '28P01') {
+            console.error("--- TROUBLESHOOTING ---");
+            console.error("1. Render Dashboard mein DB_USER aur DB_PASS check karein (case-sensitive).");
+            console.error("2. Glacier Hosting panel mein user ka password dobara reset karein aur Render mein update karein.");
+            console.error("-----------------------");
+        }
+        
+        // Jo clients open hain, unhe band karein
+        if (rootClient) {
+            try { await rootClient.end(); } catch (e) { /* ignore */ }
+        }
+        if (dbClient) {
+            try { await dbClient.end(); } catch (e) { /* ignore */ }
+        }
+        
+        // Process ko error ke saath terminate karein
+        throw error;
+    }
 }
