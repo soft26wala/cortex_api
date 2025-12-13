@@ -6,7 +6,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { configDotenv } from "dotenv";
 
-// 1. .env variables load karein (Agar locally chala rahe hain toh)
 configDotenv();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,28 +15,25 @@ export async function connectDB() {
     let rootClient;
     let dbClient;
 
-    const dbHost = process.env.DB_HOST;
-    const dbPort = process.env.DB_PORT;
-    const dbUser = process.env.DB_USER;
-    const dbPass = process.env.DB_PASS;
-    const dbName = process.env.DB_NAME;
-
-    if (!dbHost || !dbPort || !dbUser || !dbPass || !dbName) {
-        console.error("❌ Environment variables (DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME) are missing!");
-        throw new Error("Missing Database Configuration");
+    // --- Configuration from URL ---
+    // Render se DATABASE_URL variable lo
+    const dbURL = process.env.DATABASE_URL; 
+    
+    if (!dbURL) {
+        console.error("❌ Environment variable DATABASE_URL is missing!");
+        throw new Error("Missing Database URL Configuration");
     }
 
+    // Target database ka naam URL ke end se nikalna
+    const dbName = dbURL.substring(dbURL.lastIndexOf('/') + 1); 
+    
+    // Root connection URL banane ke liye: Target DB name ko 'postgres' se replace karein
+    const rootURL = dbURL.replace(`/${dbName}`, '/postgres');
+
     try {
-        // Step 1: Connect to the root/default database (usually 'postgres')
-        // NOTE: Agar Glacier Hosting 'postgres' database ka access nahi deta,
-        // toh yahan 'postgres' ki jagah seedha dbName use karein.
-        rootClient = new Client({
-            host: dbHost,
-            port: dbPort,
-            user: dbUser,
-            password: dbPass,
-            database: "postgres", // Attempt to connect to default DB
-        });
+        // Step 1: Connect to the root database (postgres)
+        // Client connection string se sab details nikal lega
+        rootClient = new Client({ connectionString: rootURL }); 
 
         await rootClient.connect();
         console.log("✅ Connected to root database (postgres).");
@@ -56,18 +52,12 @@ export async function connectDB() {
         await rootClient.end();
         
         // Step 3: Connect to the target database
-        dbClient = new Client({
-            host: dbHost,
-            port: dbPort,
-            user: dbUser,
-            password: dbPass,
-            database: dbName, // Connect to the specific DB
-        });
+        dbClient = new Client({ connectionString: dbURL }); // Original URL use karein
 
         await dbClient.connect();
         console.log(`✅ Successfully connected to target database: ${dbName}`);
 
-        // Step 4: Auto table creation
+        // Step 4: Auto table creation (your original logic)
         const sqlFiles = [
             "buy_course.sql",
             "user.sql",
@@ -92,15 +82,7 @@ export async function connectDB() {
     } catch (error) {
         console.error("🛑 FATAL DATABASE CONNECTION ERROR:", error.message);
         
-        // Agar password authentication fail hota hai
-        if (error.code === '28P01') {
-            console.error("--- TROUBLESHOOTING ---");
-            console.error("1. Render Dashboard mein DB_USER aur DB_PASS check karein (case-sensitive).");
-            console.error("2. Glacier Hosting panel mein user ka password dobara reset karein aur Render mein update karein.");
-            console.error("-----------------------");
-        }
-        
-        // Jo clients open hain, unhe band karein
+        // Clean up open clients
         if (rootClient) {
             try { await rootClient.end(); } catch (e) { /* ignore */ }
         }
@@ -108,7 +90,7 @@ export async function connectDB() {
             try { await dbClient.end(); } catch (e) { /* ignore */ }
         }
         
-        // Process ko error ke saath terminate karein
+        // Propagate error
         throw error;
     }
 }
