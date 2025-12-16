@@ -23,8 +23,8 @@ router.post("/", upload.single("course_image"), async (req, res) => {
       total_price
     } = req.body;
 
-    // Cloudinary secure URL
-    const imageUrl = req.file ? req.file.secure_url : null;
+    // ✅ Cloudinary gives full HTTPS URL
+    const imageUrl = req.file ? req.file.path : null;
 
     const sql = `
       INSERT INTO courses_offered
