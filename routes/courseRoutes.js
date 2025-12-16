@@ -30,13 +30,20 @@ const upload = multer({ storage });
 // ======================================================
 router.post("/", upload.single("course_image"), async (req, res) => {
   try {
-    const { course_name, course_desc, course_price } = req.body;
-    const imageName = req.file ? req.file.filename : null;
+    const {
+      course_name,
+      course_desc,
+      course_price,
+      total_price
+    } = req.body;
+
+    // Cloudinary URL
+    const imageUrl = req.file ? req.file.path : null;
 
     const sql = `
       INSERT INTO courses_offered
-      (course_name, course_desc, course_price, course_image)
-      VALUES ($1, $2, $3, $4)
+      (course_name, course_desc, course_price, course_image, total_price)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING course_id;
     `;
 
@@ -44,18 +51,19 @@ router.post("/", upload.single("course_image"), async (req, res) => {
       course_name,
       course_desc,
       course_price,
-      imageName
+      imageUrl,
+      total_price
     ]);
 
     return res.json({
       message: "Course added successfully",
       course_id: result.rows[0].course_id,
-      image_url: imageName ? `/uploads/${imageName}` : null
+      image_url: imageUrl
     });
 
   } catch (err) {
-    console.log("Error:", err);
-    return res.status(500).send(err);
+    console.error("Error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -90,16 +98,17 @@ router.get("/:id", async (req, res) => {
 // ======================================================
 router.put("/:id", async (req, res) => {
   try {
-    const { course_name, course_desc, course_price } = req.body;
+    const { course_name, course_desc, course_price, total_price } = req.body;
     const sql = `
       UPDATE courses_offered
-      SET course_name = $1, course_desc = $2, course_price = $3
-      WHERE course_id = $4
+      SET course_name = $1, course_desc = $2, course_price = $3 , total_price = $4
+      WHERE course_id = $5
     `;
     await db.query(sql, [
       course_name,
       course_desc,
       course_price,
+      total_price,
       req.params.id
     ]);
 
