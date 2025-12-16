@@ -16,6 +16,13 @@ let db;
 // ======================================================
 router.post("/", upload.single("course_image"), async (req, res) => {
   try {
+    console.log("BODY:", req.body);
+    console.log("FILE:", req.file);
+
+    if (!req.file) {
+      return res.status(400).json({ error: "File not received" });
+    }
+
     const {
       course_name,
       course_desc,
@@ -23,8 +30,7 @@ router.post("/", upload.single("course_image"), async (req, res) => {
       total_price
     } = req.body;
 
-    // ✅ Cloudinary gives full HTTPS URL
-    const imageUrl = req.file ? req.file.path : null;
+    const imageUrl = req.file.path; // Cloudinary URL
 
     const sql = `
       INSERT INTO courses_offered
@@ -43,15 +49,15 @@ router.post("/", upload.single("course_image"), async (req, res) => {
 
     return res.json({
       message: "Course added successfully",
-      course_id: result.rows[0].course_id,
       image_url: imageUrl
     });
 
   } catch (err) {
-    console.error("Error:", err);
+    console.error("UPLOAD ERROR:", err);
     return res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // ======================================================
 // GET ALL COURSES
