@@ -21,7 +21,7 @@ app.use('/uploads', express.static('uploads'));
 app.use("/add-course", courseRoutes)
 app.use("/callback", callback)
 app.use("/students", student)
-app.use("/user", user)
+app.use("/user", user) 
 let db;
 
 const startServer = async () => {
