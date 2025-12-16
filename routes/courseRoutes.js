@@ -56,8 +56,8 @@ router.post("/", upload.single("course_image"), async (req, res) => {
 
         const sql = `
             INSERT INTO courses_offered
-            (course_name, course_desc, course_price, course_image, total_price, public_id)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            (course_name, course_desc, course_price, course_image, total_price)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *;
         `;
         
@@ -69,7 +69,6 @@ router.post("/", upload.single("course_image"), async (req, res) => {
             course_price,
             imageUrl, // Cloudinary URL
             total_price,
-            publicId // Cloudinary Public ID
         ]);
 
         console.log("DB RESULT:", dbResult.rows);
