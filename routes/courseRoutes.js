@@ -17,11 +17,7 @@ let db;
 router.post("/", upload.single("course_image"), async (req, res) => {
   try {
     console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
-
-    if (!req.file) {
-      return res.status(400).json({ error: "File not received" });
-    }
+    console.log("FILE:", JSON.stringify(req.file, null, 2));
 
     const {
       course_name,
@@ -30,13 +26,17 @@ router.post("/", upload.single("course_image"), async (req, res) => {
       total_price
     } = req.body;
 
-    const imageUrl = req.file.path; // Cloudinary URL
+    if (!req.file) {
+      return res.status(400).json({ error: "File missing" });
+    }
+
+    const imageUrl = req.file.path;
 
     const sql = `
       INSERT INTO courses_offered
       (course_name, course_desc, course_price, course_image, total_price)
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING course_id;
+      RETURNING *;
     `;
 
     const result = await db.query(sql, [
@@ -47,16 +47,19 @@ router.post("/", upload.single("course_image"), async (req, res) => {
       total_price
     ]);
 
+    console.log("DB RESULT:", result.rows);
+
     return res.json({
-      message: "Course added successfully",
-      image_url: imageUrl
+      success: true,
+      data: result.rows[0],
     });
 
   } catch (err) {
-    console.error("UPLOAD ERROR:", err);
-    return res.status(500).json({ error: "Server error" });
+    console.error("DB ERROR:", err.message);
+    return res.status(500).json({ error: err.message });
   }
 });
+
 
 
 // ======================================================
