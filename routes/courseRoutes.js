@@ -1,8 +1,7 @@
 // routes/courseRoutes.js
 import express from "express";
-import multer from "multer";
-import path from "path";
 import { connectDB } from "../db/db.js";
+import { upload } from "../middlewares/upload.js";
 
 const router = express.Router();
 let db;
@@ -11,19 +10,6 @@ let db;
 (async () => {
   db = await connectDB();
 })();
-
-// Multer for file upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + path.extname(file.originalname);
-    cb(null, uniqueName);
-  }
-});
-
-const upload = multer({ storage });
 
 // ======================================================
 // ADD COURSE (PostgreSQL Version)
@@ -37,8 +23,8 @@ router.post("/", upload.single("course_image"), async (req, res) => {
       total_price
     } = req.body;
 
-    // Cloudinary URL
-    const imageUrl = req.file ? req.file.path : null;
+    // Cloudinary secure URL
+    const imageUrl = req.file ? req.file.secure_url : null;
 
     const sql = `
       INSERT INTO courses_offered
