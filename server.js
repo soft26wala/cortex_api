@@ -5,6 +5,8 @@ import user from './routes/user.js'
 import callback from './routes/callback.js'
 import student from './routes/student.js'
 import cors from 'cors'
+import payment from './routes/payment.js'
+import events from './routes/events.js'
 import { configDotenv } from "dotenv";
 configDotenv()
 
@@ -21,6 +23,8 @@ app.use('/uploads', express.static('uploads'));
 app.use("/add-course", courseRoutes)
 app.use("/callback", callback)
 app.use("/students", student)
+app.use("/api", payment)
+app.use("/api", events)
 app.use("/user", user) 
 let db;
 
