@@ -24,8 +24,7 @@ const upload = multer({ storage });
 // ==============================
 // CREATE User (POSTGRES)
 // ==============================
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+
 
 router.post("/", upload.single("photo"), async (req, res) => {
   try {
