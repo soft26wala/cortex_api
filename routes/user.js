@@ -28,55 +28,61 @@ const upload = multer({ storage });
 
 router.post("/", upload.single("photo"), async (req, res) => {
   try {
-    const { name, email, password, provider } = req.body; // provider field batayega ki login kahan se hai
-    const photo = req.file ? req.file.filename : null;
+    // 1. Data Extract karein (Body check karein)
+    const { name, email, password, provider } = req.body;
+    const photo = req.file ? req.file.filename : (req.body.photo || null);
 
-    // 1. Check karein ki user pehle se exist karta hai ya nahi
-    const userExist = await db.query("SELECT * FROM users WHERE email = $1", [email]);
-    
-    if (userExist.rows.length > 0) {
-      // Agar user social login se aa raha hai toh sirf login karwayein (Signup nahi)
-      if (provider === 'google' || provider === 'github') {
-        const token = jwt.sign({ id: userExist.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        return res.json({ message: "Login successful", token, user: userExist.rows[0] });
-      }
-      return res.status(400).json({ message: "User already exists" });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    // 2. Password Handling
+    // 2. Check karein user pehle se hai ya nahi
+    const userExist = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+
+    if (userExist.rows.length > 0) {
+      // Agar user exist karta hai (Social ya Manual), toh directly login karwa do
+      const user = userExist.rows[0];
+      const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+      
+      return res.status(200).json({
+        message: "Login successful",
+        token,
+        user: { id: user.id, name: user.name, email: user.email, photo: user.photo }
+      });
+    }
+
+    // 3. Naye User ke liye Password Hashing
     let hashedPassword = null;
     if (password) {
-      // Agar password hai (manual form), toh ise hash karein
       hashedPassword = await bcrypt.hash(password, 10);
     } 
-    // Note: Agar social login hai, toh hashedPassword null hi rahega Database mein.
+    // Social login mein password null rahega, DB mein password column NULLABLE hona chahiye.
 
-    // 3. Database mein Insert karein
+    // 4. DATABASE MEIN INSERT (Sabse important step)
     const sql = `
       INSERT INTO users (name, email, photo, password)
       VALUES ($1, $2, $3, $4)
-      RETURNING id, name, email;
+      RETURNING id, name, email, photo;
     `;
 
     const result = await db.query(sql, [name, email, photo, hashedPassword]);
     const newUser = result.rows[0];
 
-    // 4. JWT Token generate karein
+    // 5. AUTO-LOGIN: Signup hote hi Token generate karein
     const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    res.json({
-      message: "User created successfully",
+    // Response bhejein (Ab user ko dobara login nahi karna padega)
+    res.status(201).json({
+      message: "User registered and logged in successfully",
       token,
-      user: newUser,
-      photo_url: photo ? `/uploads/${photo}` : null
+      user: newUser
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
+    console.error("Signup Error:", err);
+    res.status(500).json({ message: "Internal Server Error", error: err.message });
   }
 });
-
 
 // ==============================
 // GET ALL Users
