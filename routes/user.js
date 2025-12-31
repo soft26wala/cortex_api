@@ -26,61 +26,119 @@ const upload = multer({ storage });
 // ==============================
 
 
-router.post("/", upload.single("photo"), async (req, res) => {
+// router.post("/", upload.single("photo"), async (req, res) => {
+//   try {
+//     // 1. Data Extract karein (Body check karein)
+//     const { name, email, password, provider } = req.body;
+//     const photo = req.file ? req.file.filename : (req.body.photo || null);
+
+//     if (!email) {
+//       return res.status(400).json({ message: "Email is required" });
+//     }
+
+//     // 2. Check karein user pehle se hai ya nahi
+//     const userExist = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+
+//     if (userExist.rows.length > 0) {
+//       // Agar user exist karta hai (Social ya Manual), toh directly login karwa do
+//       const user = userExist.rows[0];
+//       const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+      
+//       return res.status(200).json({
+//         message: "Login successful",
+//         token,
+//         user: { id: user.id, name: user.name, email: user.email, photo: user.photo }
+//       });
+//     }
+
+//     // 3. Naye User ke liye Password Hashing
+//     let hashedPassword = null;
+//     if (password) {
+//       hashedPassword = await bcrypt.hash(password, 10);
+//     } 
+//     // Social login mein password null rahega, DB mein password column NULLABLE hona chahiye.
+
+//     // 4. DATABASE MEIN INSERT (Sabse important step)
+//     const sql = `
+//       INSERT INTO users (name, email, photo, password)
+//       VALUES ($1, $2, $3, $4)
+//       RETURNING id, name, email, photo;
+//     `;
+
+//     const result = await db.query(sql, [name, email, photo, hashedPassword]);
+//     const newUser = result.rows[0];
+
+//     // 5. AUTO-LOGIN: Signup hote hi Token generate karein
+//     const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+//     // Response bhejein (Ab user ko dobara login nahi karna padega)
+//     res.status(201).json({
+//       message: "User registered and logged in successfully",
+//       token,
+//       user: newUser
+//     });
+
+//   } catch (err) {
+//     console.error("Signup Error:", err);
+//     res.status(500).json({ message: "Internal Server Error", error: err.message });
+//   }
+// });
+
+
+
+// POST: /api/auth/social-login
+router.post("/social-login", async (req, res) => {
   try {
-    // 1. Data Extract karein (Body check karein)
-    const { name, email, password, provider } = req.body;
-    const photo = req.file ? req.file.filename : (req.body.photo || null);
+    const { name, email, photo, provider } = req.body; // photo yahan direct URL hoga
 
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
-    }
-
-    // 2. Check karein user pehle se hai ya nahi
+    // Check if user exists
     const userExist = await db.query("SELECT * FROM users WHERE email = $1", [email]);
 
+    let user;
     if (userExist.rows.length > 0) {
-      // Agar user exist karta hai (Social ya Manual), toh directly login karwa do
-      const user = userExist.rows[0];
-      const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-      
-      return res.status(200).json({
-        message: "Login successful",
-        token,
-        user: { id: user.id, name: user.name, email: user.email, photo: user.photo }
-      });
+      // Agar user pehle se hai, toh sirf data update karein ya wahi user le lein
+      user = userExist.rows[0];
+    } else {
+      // Agar naya user hai (Social Signup), toh insert karein
+      // Password yahan NULL jayega
+      const result = await db.query(
+        "INSERT INTO users (name, email, photo, password) VALUES ($1, $2, $3, $4) RETURNING id, name, email",
+        [name, email, photo, null] 
+      );
+      user = result.rows[0];
     }
 
-    // 3. Naye User ke liye Password Hashing
-    let hashedPassword = null;
-    if (password) {
-      hashedPassword = await bcrypt.hash(password, 10);
-    } 
-    // Social login mein password null rahega, DB mein password column NULLABLE hona chahiye.
-
-    // 4. DATABASE MEIN INSERT (Sabse important step)
-    const sql = `
-      INSERT INTO users (name, email, photo, password)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, name, email, photo;
-    `;
-
-    const result = await db.query(sql, [name, email, photo, hashedPassword]);
-    const newUser = result.rows[0];
-
-    // 5. AUTO-LOGIN: Signup hote hi Token generate karein
-    const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-    // Response bhejein (Ab user ko dobara login nahi karna padega)
-    res.status(201).json({
-      message: "User registered and logged in successfully",
-      token,
-      user: newUser
-    });
-
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.status(200).json({ message: "Social Login Success", token, user });
   } catch (err) {
-    console.error("Signup Error:", err);
-    res.status(500).json({ message: "Internal Server Error", error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+// POST: /api/auth/signup-manual
+router.post("/signup-manual", upload.single("photo"), async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const photo = req.file ? req.file.filename : null;
+
+    // Check existing user
+    const userExist = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+    if (userExist.rows.length > 0) return res.status(400).json({ message: "User already exists" });
+
+    // Hash Password (Manual signup mein password zaroori hai)
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await db.query(
+      "INSERT INTO users (name, email, photo, password) VALUES ($1, $2, $3, $4) RETURNING id, name, email",
+      [name, email, photo, hashedPassword]
+    );
+
+    const token = jwt.sign({ id: result.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.status(201).json({ message: "Manual Signup Success", token, user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
