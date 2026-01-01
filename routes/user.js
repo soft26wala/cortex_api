@@ -130,21 +130,22 @@ router.post("/signup-manual", upload.single("photo"), async (req, res) => {
     if (userExist.rows.length > 0) return res.status(400).json({ message: "User already exists" });
 
     // 2. Cloudinary Upload Logic
-    let photoUrl = null;
-    if (req.file) {
-      // Buffer se upload karna best hai Render ke liye (local folder ki tension nahi rehti)
-      const uploadResponse = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { folder: "user_avatars" }, // Cloudinary folder name
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        stream.end(req.file.buffer); // Multer memoryStorage use karein to better hai
-      });
-      photoUrl = uploadResponse.secure_url; // Yeh final Cloudinary URL hai
-    }
+           // --- 🚀 Cloudinary अपलोड लॉजिक यहाँ शुरू होता है 🚀 ---
+
+        // 1. Buffer को Data URI में बदलें
+        // Cloudinary को अपलोड करने के लिए Buffer को Base64 स्ट्रिंग में बदलना पड़ता है।
+        const b64 = Buffer.from(req.file.buffer).toString("base64");
+        let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+        
+        // 2. Cloudinary पर अपलोड करें
+        const resultimg = await cloudinary.uploader.upload(dataURI, {
+            folder: "course_images", // Cloudinary में एक फ़ोल्डर
+            resource_type: "auto"
+        });
+
+        // 3. Cloudinary से secure URL प्राप्त करें
+        const imageUrl = resultimg.secure_url;
+        const publicId = resultimg.public_id;
 
     // 3. Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -152,7 +153,7 @@ router.post("/signup-manual", upload.single("photo"), async (req, res) => {
     // 4. Save to Database (Ab hum filename ki jagah photoUrl save kar rahe hain)
     const result = await db.query(
       "INSERT INTO users (name, email, photo, password) VALUES ($1, $2, $3, $4) RETURNING id, name, email, photo",
-      [name, email, photoUrl, hashedPassword]
+      [name, email, imageUrl, hashedPassword]
     );
 
     const token = jwt.sign({ id: result.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1d' });
