@@ -139,7 +139,7 @@ router.post("/signup-manual", upload.single("photo"), async (req, res) => {
         
         // 2. Cloudinary पर अपलोड करें
         const resultimg = await cloudinary.uploader.upload(dataURI, {
-            folder: "course_images", // Cloudinary में एक फ़ोल्डर
+            folder: "photo", // Cloudinary में एक फ़ोल्डर
             resource_type: "auto"
         });
 
