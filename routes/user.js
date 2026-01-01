@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import cloudinary from '../cloudinaryConfig.js'
@@ -146,21 +147,32 @@ router.post("/signup-manual", upload.single("photo"), async (req, res) => {
 
     // 2. Cloudinary Upload Logic (only if file is provided)
     let imageUrl = null;
-    
+
     if (req.file) {
       // --- 🚀 Cloudinary अपलोड लॉजिक यहाँ शुरू होता है 🚀 ---
-      // 1. Buffer को Data URI में बदलें
-      // Cloudinary को अपलोड करने के लिए Buffer को Base64 स्ट्रिंग में बदलना पड़ता है।
-      const b64 = Buffer.from(req.file.buffer).toString("base64");
-      let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-      
-      // 2. Cloudinary पर अपलोड करें
+      // Multer is currently using diskStorage in this file. When files are stored
+      // on disk, `req.file.buffer` will be undefined. In that case, read the
+      // file from disk and convert to base64 before uploading to Cloudinary.
+      let fileBuffer;
+      if (req.file.buffer) {
+        fileBuffer = req.file.buffer;
+      } else if (req.file.path) {
+        fileBuffer = fs.readFileSync(req.file.path);
+      } else {
+        throw new Error('Uploaded file has no buffer or path');
+      }
+
+      // Convert to base64 data URI
+      const b64 = fileBuffer.toString("base64");
+      const dataURI = "data:" + (req.file.mimetype || 'application/octet-stream') + ";base64," + b64;
+
+      // Upload to Cloudinary
       const resultimg = await cloudinary.uploader.upload(dataURI, {
-          folder: "photo", // Cloudinary में एक फ़ोल्डर
+          folder: "photo",
           resource_type: "auto"
       });
 
-      // 3. Cloudinary से secure URL प्राप्त करें
+      // Get secure URL
       imageUrl = resultimg.secure_url;
     }
 
