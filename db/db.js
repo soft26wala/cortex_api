@@ -68,6 +68,14 @@ export async function connectDB() {
   await db.query(schema3); // callback.sql
   await db.query(schema4); // student.sql
 
+  // Ensure required columns exist (fix deployments where schema changed)
+  try {
+    await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);");
+    console.log("✅ Ensured 'password' column exists on users table.");
+  } catch (err) {
+    console.error("Failed to ensure 'password' column:", err.message);
+  }
+
   console.log("✅ All tables created on PostgreSQL!");
 
   return db;

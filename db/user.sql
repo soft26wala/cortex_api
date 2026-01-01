@@ -5,3 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(255) UNIQUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Ensure password column exists for manual signups
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS password VARCHAR(255);
