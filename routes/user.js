@@ -125,27 +125,34 @@ router.post("/signup-manual", upload.single("photo"), async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email, and password are required" });
+    }
+
     // 1. Check if user already exists
     const userExist = await db.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userExist.rows.length > 0) return res.status(400).json({ message: "User already exists" });
 
-    // 2. Cloudinary Upload Logic
-           // --- 🚀 Cloudinary अपलोड लॉजिक यहाँ शुरू होता है 🚀 ---
+    // 2. Cloudinary Upload Logic (only if file is provided)
+    let imageUrl = null;
+    
+    if (req.file) {
+      // --- 🚀 Cloudinary अपलोड लॉजिक यहाँ शुरू होता है 🚀 ---
+      // 1. Buffer को Data URI में बदलें
+      // Cloudinary को अपलोड करने के लिए Buffer को Base64 स्ट्रिंग में बदलना पड़ता है।
+      const b64 = Buffer.from(req.file.buffer).toString("base64");
+      let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+      
+      // 2. Cloudinary पर अपलोड करें
+      const resultimg = await cloudinary.uploader.upload(dataURI, {
+          folder: "photo", // Cloudinary में एक फ़ोल्डर
+          resource_type: "auto"
+      });
 
-        // 1. Buffer को Data URI में बदलें
-        // Cloudinary को अपलोड करने के लिए Buffer को Base64 स्ट्रिंग में बदलना पड़ता है।
-        const b64 = Buffer.from(req.file.buffer).toString("base64");
-        let dataURI = "data:" + req.file.mimetype + ";base64," + b64;
-        
-        // 2. Cloudinary पर अपलोड करें
-        const resultimg = await cloudinary.uploader.upload(dataURI, {
-            folder: "photo", // Cloudinary में एक फ़ोल्डर
-            resource_type: "auto"
-        });
-
-        // 3. Cloudinary से secure URL प्राप्त करें
-        const imageUrl = resultimg.secure_url;
-        const publicId = resultimg.public_id;
+      // 3. Cloudinary से secure URL प्राप्त करें
+      imageUrl = resultimg.secure_url;
+    }
 
     // 3. Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
