@@ -4,6 +4,7 @@ import path from "path";
 import { connectDB } from "../db/db.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import cloudinary from '../cloudinaryConfig.js'
 
 
 const router = express.Router();
@@ -13,6 +14,8 @@ let db;
 (async () => {
   db = await connectDB();
 })();
+
+
 
 // Multer storage
 const storage = multer.diskStorage({
@@ -121,23 +124,47 @@ router.post("/social-login", async (req, res) => {
 router.post("/signup-manual", upload.single("photo"), async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    const photo = req.file ? req.file.filename : null;
 
-    // Check existing user
+    // 1. Check if user already exists
     const userExist = await db.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userExist.rows.length > 0) return res.status(400).json({ message: "User already exists" });
 
-    // Hash Password (Manual signup mein password zaroori hai)
+    // 2. Cloudinary Upload Logic
+    let photoUrl = null;
+    if (req.file) {
+      // Buffer se upload karna best hai Render ke liye (local folder ki tension nahi rehti)
+      const uploadResponse = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "user_avatars" }, // Cloudinary folder name
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(req.file.buffer); // Multer memoryStorage use karein to better hai
+      });
+      photoUrl = uploadResponse.secure_url; // Yeh final Cloudinary URL hai
+    }
+
+    // 3. Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 4. Save to Database (Ab hum filename ki jagah photoUrl save kar rahe hain)
     const result = await db.query(
-      "INSERT INTO users (name, email, photo, password) VALUES ($1, $2, $3, $4) RETURNING id, name, email",
-      [name, email, photo, hashedPassword]
+      "INSERT INTO users (name, email, photo, password) VALUES ($1, $2, $3, $4) RETURNING id, name, email, photo",
+      [name, email, photoUrl, hashedPassword]
     );
 
     const token = jwt.sign({ id: result.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.status(201).json({ message: "Manual Signup Success", token, user: result.rows[0] });
+    
+    res.status(201).json({ 
+      message: "Manual Signup Success", 
+      token, 
+      user: result.rows[0] 
+    });
+
   } catch (err) {
+    console.error("Cloudinary/DB Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
