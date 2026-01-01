@@ -1,21 +1,31 @@
 import express from "express";
 import multer from "multer";
 import path from "path";
-import { connectDB } from "../db/db.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import cloudinary from '../cloudinaryConfig.js'
 
 
 const router = express.Router();
-let db;
 
-// Connect DB once
-(async () => {
-  db = await connectDB();
-})();
+// Store db reference (will be set by server.js)
+let db = null;
 
+// Export function to set db connection
+export function setUserDB(database) {
+  db = database;
+}
 
+// Middleware to check if db is initialized
+const checkDB = (req, res, next) => {
+  if (!db) {
+    return res.status(503).json({ error: "Database not initialized. Please try again in a moment." });
+  }
+  next();
+};
+
+// Apply checkDB middleware to all routes
+router.use(checkDB);
 
 // Multer storage
 const storage = multer.diskStorage({

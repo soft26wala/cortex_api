@@ -1,7 +1,7 @@
 import express from "express";
 import { connectDB } from "./db/db.js";
 import courseRoutes from './routes/courseRoutes.js'
-import user from './routes/user.js'
+import user, { setUserDB } from './routes/user.js'
 import callback from './routes/callback.js'
 import student from './routes/student.js'
 import cors from 'cors'
@@ -22,21 +22,31 @@ app.use(cors({
   credentials: true
 }));
 app.use('/uploads', express.static('uploads'));
-app.use("/add-course", courseRoutes)
-app.use("/callback", callback)
-app.use("/students", student)
-app.use("/api", payment)
-app.use("/api", events)
-app.use("/user", user) 
+
 let db;
 
 const startServer = async () => {
-  db = await connectDB();   // database auto create
+  try {
+    db = await connectDB();   // database auto create
+    console.log("✅ Database connected successfully!");
+    
+    // Pass db to user routes
+    setUserDB(db);
+    
+    // Register routes AFTER database connection is established
+    app.use("/add-course", courseRoutes)
+    app.use("/callback", callback)
+    app.use("/students", student)
+    app.use("/api", payment)
+    app.use("/api", events)
+    app.use("/user", user) 
+    
+    const PORT = process.env.PORT || 4000;
+    app.listen(PORT, () => console.log("🚀 Server running on port:", PORT));
+  } catch (err) {
+    console.error("❌ Failed to start server:", err);
+    process.exit(1);
+  }
 };
 
 startServer();
-
-app.get
-const PORT = process.env.PORT || 4000;
-
-app.listen(PORT, () => console.log("Server running on :" , PORT));
