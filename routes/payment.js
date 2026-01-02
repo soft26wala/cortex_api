@@ -29,8 +29,8 @@ const createPaymentRouter = (db) => {
 
             // DB mein initial entry (Status: PENDING)
             const query = `
-                INSERT INTO payments (transaction_id, user_id, course_name, amount, payment_status, payment_gateway)
-                VALUES ($1, $2, $3, $4, $5, 'razorpay')
+                INSERT INTO payments (transaction_id, user_id, course_name, amount, payment_status)
+                VALUES ($1, $2, $3, $4, $5)
             `;
             await db.query(query, [
                 order.id, // Razorpay Order ID as Transaction ID
