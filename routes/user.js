@@ -279,7 +279,7 @@ router.post("/login", async (req, res) => {
     const result = await db.query(userQuery, [email]);
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ message: "Invalid Email or Password" });
+      return res.status(401).json({ message: "Invalid Email Please try again." });
     }
 
     const user = result.rows[0];
@@ -295,7 +295,7 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid Email or Password" });
+      return res.status(401).json({ message: "Wrong Password" });
     }
 
     // 4. JWT Token generate karein

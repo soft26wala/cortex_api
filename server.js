@@ -11,16 +11,19 @@ import { configDotenv } from "dotenv";
 configDotenv()
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors({
   origin: [process.env.clientUrl,
     "http://127.0.0.1:5500",
     "http://127.0.0.1:5501",
     "http://127.0.0.1:3000"
   ],
-  methods: "GET,POST,PUT,DELETE",
-  credentials: true
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+app.options('*', cors());
 app.use('/uploads', express.static('uploads'));
 
 let db;
