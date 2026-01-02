@@ -1,62 +1,56 @@
 import express from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import { connectDB } from "../db/db.js";
 
-const router = express.Router();
-let db;
+const createPaymentRouter = (db) => {
+    const router = express.Router();
 
-// Database Connection
-(async () => {
-    db = await connectDB();
-})();
+    // Razorpay Instance Setup
+    const razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
 
-// Razorpay Instance Setup
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+    // --- 1. Create Razorpay Order ---
+    // Frontend se isse call karein jab user "Pay Now" par click kare
+    router.post("/create-order", async (req, res) => {
+        try {
+            const { amount, userId, courseName } = req.body;
+            
+            if (!amount) return res.status(400).json({ error: "Amount is required" });
 
-// --- 1. Create Razorpay Order ---
-// Frontend se isse call karein jab user "Pay Now" par click kare
-router.post("/create-order", async (req, res) => {
-    try {
-        const { amount, userId, courseName } = req.body;
-        
-        if (!amount) return res.status(400).json({ error: "Amount is required" });
+            const options = {
+                amount: amount * 100, // Razorpay paise mein amount leta hai
+                currency: "INR",
+                receipt: `rcp_${Date.now()}`,
+            };
 
-        const options = {
-            amount: amount * 100, // Razorpay paise mein amount leta hai
-            currency: "INR",
-            receipt: `rcp_${Date.now()}`,
-        };
+            const order = await razorpay.orders.create(options);
 
-        const order = await razorpay.orders.create(options);
+            // DB mein initial entry (Status: PENDING)
+            const query = `
+                INSERT INTO payments (transaction_id, user_id, course_name, amount, payment_status, payment_gateway)
+                VALUES ($1, $2, $3, $4, $5, 'razorpay')
+            `;
+            await db.query(query, [
+                order.id, // Razorpay Order ID as Transaction ID
+                userId,
+                courseName,
+                amount,
+                "PENDING",
+            ]);
 
-        // DB mein initial entry (Status: PENDING)
-        const query = `
-            INSERT INTO payments (transaction_id, user_id, course_name, amount, payment_status, payment_gateway)
-            VALUES ($1, $2, $3, $4, $5, 'razorpay')
-        `;
-        await db.query(query, [
-            order.id, // Razorpay Order ID as Transaction ID
-            userId,
-            courseName,
-            amount,
-            "PENDING",
-        ]);
+            res.json(order);
+        } catch (error) {
+            console.error("Order Creation Error:", error);
+            res.status(500).json({ error: "Failed to create order" });
+        }
+    });
 
-        res.json(order);
-    } catch (error) {
-        console.error("Order Creation Error:", error);
-        res.status(500).json({ error: "Failed to create order" });
-    }
-});
-
-// --- 2. Verify Payment Signature (Frontend Callback) ---
-// Jab Razorpay ka Popup successful payment dikhaye, tab frontend se isse call karein
-router.post("/verify-payment", async (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    // --- 2. Verify Payment Signature (Frontend Callback) ---
+    // Jab Razorpay ka Popup successful payment dikhaye, tab frontend se isse call karein
+    router.post("/verify-payment", async (req, res) => {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
@@ -79,54 +73,57 @@ router.post("/verify-payment", async (req, res) => {
         );
         res.status(400).json({ status: "FAILED", message: "Invalid signature" });
     }
-});
+    });
 
-// --- 3. Razorpay Webhook (Backend-to-Backend Safety) ---
-// Isse Razorpay Dashboard mein setup karein (URL: your-domain.com/api/payment/webhook)
-router.post("/webhook", async (req, res) => {
-    try {
-        const signature = req.headers["x-razorpay-signature"];
-        const secret = process.env.RAZORPAY_WEBHOOK_SECRET; 
+    // --- 3. Razorpay Webhook (Backend-to-Backend Safety) ---
+    // Isse Razorpay Dashboard mein setup karein (URL: your-domain.com/api/payment/webhook)
+    router.post("/webhook", async (req, res) => {
+        try {
+            const signature = req.headers["x-razorpay-signature"];
+            const secret = process.env.RAZORPAY_WEBHOOK_SECRET; 
 
-        const body = JSON.stringify(req.body);
-        const expectedSignature = crypto
-            .createHmac("sha256", secret)
-            .update(body)
-            .digest("hex");
+            const body = JSON.stringify(req.body);
+            const expectedSignature = crypto
+                .createHmac("sha256", secret)
+                .update(body)
+                .digest("hex");
 
-        if (signature !== expectedSignature) {
-            return res.status(400).send("Invalid Webhook Signature");
+            if (signature !== expectedSignature) {
+                return res.status(400).send("Invalid Webhook Signature");
+            }
+
+            const event = req.body.event;
+            const orderId = req.body.payload.payment.entity.order_id;
+
+            if (event === "payment.captured" || event === "payment.authorized") {
+                await db.query(
+                    "UPDATE payments SET payment_status = 'SUCCESS' WHERE transaction_id = $1",
+                    [orderId]
+                );
+            }
+
+            res.status(200).send("OK");
+        } catch (err) {
+            console.error("Webhook Error:", err);
+            res.status(500).send("Internal Server Error");
         }
+    });
 
-        const event = req.body.event;
-        const orderId = req.body.payload.payment.entity.order_id;
-
-        if (event === "payment.captured" || event === "payment.authorized") {
-            await db.query(
-                "UPDATE payments SET payment_status = 'SUCCESS' WHERE transaction_id = $1",
-                [orderId]
+    // --- 4. Get Payment History ---
+    router.get("/history/:userId", async (req, res) => {
+        try {
+            const { userId } = req.params;
+            const result = await db.query(
+                "SELECT * FROM payments WHERE user_id = $1 ORDER BY payment_date DESC",
+                [userId]
             );
+            res.json(result.rows);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
+    });
 
-        res.status(200).send("OK");
-    } catch (err) {
-        console.error("Webhook Error:", err);
-        res.status(500).send("Internal Server Error");
-    }
-});
+    return router;
+};
 
-// --- 4. Get Payment History ---
-router.get("/history/:userId", async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const result = await db.query(
-            "SELECT * FROM payments WHERE user_id = $1 ORDER BY payment_date DESC",
-            [userId]
-        );
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-export default router;
+export default createPaymentRouter;

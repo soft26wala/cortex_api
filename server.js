@@ -5,7 +5,7 @@ import user, { setUserDB } from './routes/user.js'
 import callback from './routes/callback.js'
 import student from './routes/student.js'
 import cors from 'cors'
-import payment from './routes/payment.js'
+import createPaymentRouter from './routes/payment.js'
 import events from './routes/events.js'
 import { configDotenv } from "dotenv";
 configDotenv()
@@ -39,7 +39,7 @@ const startServer = async () => {
     app.use("/add-course", courseRoutes)
     app.use("/callback", callback)
     app.use("/students", student)
-    app.use("/api", payment)
+    app.use("/api/payment", createPaymentRouter(db))
     app.use("/api", events)
     app.use("/user", user) 
     
