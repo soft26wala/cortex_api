@@ -5,6 +5,12 @@ import crypto from "crypto";
 const createPaymentRouter = (db) => {
     const router = express.Router();
 
+    // Validate DB connection
+    if (!db) {
+        console.error("❌ Database connection not passed to payment router");
+        return router; // Return empty router if DB is not available
+    }
+
     // Razorpay Instance Setup
     const razorpay = new Razorpay({
         key_id: process.env.RAZORPAY_KEY_ID,
@@ -50,29 +56,34 @@ const createPaymentRouter = (db) => {
     // --- 2. Verify Payment Signature (Frontend Callback) ---
     // Jab Razorpay ka Popup successful payment dikhaye, tab frontend se isse call karein
     router.post("/verify-payment", async (req, res) => {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+        try {
+            const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-        .update(body.toString())
-        .digest("hex");
+            const body = razorpay_order_id + "|" + razorpay_payment_id;
+            const expectedSignature = crypto
+                .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+                .update(body.toString())
+                .digest("hex");
 
-    if (expectedSignature === razorpay_signature) {
-        // Update DB to SUCCESS
-        await db.query(
-            "UPDATE payments SET payment_status = 'SUCCESS' WHERE transaction_id = $1",
-            [razorpay_order_id]
-        );
-        res.json({ status: "SUCCESS", message: "Payment verified successfully" });
-    } else {
-        // Update DB to FAILED if signature mismatch
-        await db.query(
-            "UPDATE payments SET payment_status = 'FAILED' WHERE transaction_id = $1",
-            [razorpay_order_id]
-        );
-        res.status(400).json({ status: "FAILED", message: "Invalid signature" });
-    }
+            if (expectedSignature === razorpay_signature) {
+                // Update DB to SUCCESS
+                await db.query(
+                    "UPDATE payments SET payment_status = 'SUCCESS' WHERE transaction_id = $1",
+                    [razorpay_order_id]
+                );
+                res.json({ status: "SUCCESS", message: "Payment verified successfully" });
+            } else {
+                // Update DB to FAILED if signature mismatch
+                await db.query(
+                    "UPDATE payments SET payment_status = 'FAILED' WHERE transaction_id = $1",
+                    [razorpay_order_id]
+                );
+                res.status(400).json({ status: "FAILED", message: "Invalid signature" });
+            }
+        } catch (error) {
+            console.error("Payment Verification Error:", error);
+            res.status(500).json({ error: "Failed to verify payment" });
+        }
     });
 
     // --- 3. Razorpay Webhook (Backend-to-Backend Safety) ---
@@ -113,13 +124,19 @@ const createPaymentRouter = (db) => {
     router.get("/history/:userId", async (req, res) => {
         try {
             const { userId } = req.params;
+            
+            if (!userId) {
+                return res.status(400).json({ error: "User ID is required" });
+            }
+
             const result = await db.query(
                 "SELECT * FROM payments WHERE user_id = $1 ORDER BY payment_date DESC",
                 [userId]
             );
             res.json(result.rows);
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            console.error("Payment History Error:", error);
+            res.status(500).json({ error: "Failed to fetch payment history" });
         }
     });
 

@@ -40,63 +40,6 @@ const upload = multer({ storage });
 // ==============================
 
 
-// router.post("/", upload.single("photo"), async (req, res) => {
-//   try {
-//     // 1. Data Extract karein (Body check karein)
-//     const { name, email, password, provider } = req.body;
-//     const photo = req.file ? req.file.filename : (req.body.photo || null);
-
-//     if (!email) {
-//       return res.status(400).json({ message: "Email is required" });
-//     }
-
-//     // 2. Check karein user pehle se hai ya nahi
-//     const userExist = await db.query("SELECT * FROM users WHERE email = $1", [email]);
-
-//     if (userExist.rows.length > 0) {
-//       // Agar user exist karta hai (Social ya Manual), toh directly login karwa do
-//       const user = userExist.rows[0];
-//       const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-      
-//       return res.status(200).json({
-//         message: "Login successful",
-//         token,
-//         user: { id: user.id, name: user.name, email: user.email, photo: user.photo }
-//       });
-//     }
-
-//     // 3. Naye User ke liye Password Hashing
-//     let hashedPassword = null;
-//     if (password) {
-//       hashedPassword = await bcrypt.hash(password, 10);
-//     } 
-//     // Social login mein password null rahega, DB mein password column NULLABLE hona chahiye.
-
-//     // 4. DATABASE MEIN INSERT (Sabse important step)
-//     const sql = `
-//       INSERT INTO users (name, email, photo, password)
-//       VALUES ($1, $2, $3, $4)
-//       RETURNING id, name, email, photo;
-//     `;
-
-//     const result = await db.query(sql, [name, email, photo, hashedPassword]);
-//     const newUser = result.rows[0];
-
-//     // 5. AUTO-LOGIN: Signup hote hi Token generate karein
-//     const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-//     // Response bhejein (Ab user ko dobara login nahi karna padega)
-//     res.status(201).json({
-//       message: "User registered and logged in successfully",
-//       token,
-//       user: newUser
-//     });
-
-//   } catch (err) {
-//     console.error("Signup Error:", err);
-//     res.status(500).json({ message: "Internal Server Error", error: err.message });
-//   }
-// });
 
 
 
