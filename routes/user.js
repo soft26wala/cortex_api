@@ -116,8 +116,8 @@ router.post("/social-login", async (req, res) => {
       // Agar naya user hai (Social Signup), toh insert karein
       // Password yahan NULL jayega
       const result = await db.query(
-        "INSERT INTO users (name, email, photo, password) VALUES ($1, $2, $3, $4) RETURNING id, name, email",
-        [name, email, photo, null] 
+        "INSERT INTO users (name, email, photo, provider, password) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email",
+        [name, email, photo, provider, null] 
       );
       user = result.rows[0];
     }
@@ -181,8 +181,8 @@ router.post("/signup-manual", upload.single("photo"), async (req, res) => {
 
     // 4. Save to Database (Ab hum filename ki jagah photoUrl save kar rahe hain)
     const result = await db.query(
-      "INSERT INTO users (name, email, photo, password) VALUES ($1, $2, $3, $4) RETURNING id, name, email, photo",
-      [name, email, imageUrl, hashedPassword]
+      "INSERT INTO users (name, email, photo, password, provider) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, photo",
+      [name, email, imageUrl, hashedPassword, "manual"]
     );
 
     const token = jwt.sign({ id: result.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1d' });
