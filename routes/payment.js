@@ -71,6 +71,11 @@ const createPaymentRouter = (db) => {
                     "UPDATE payments SET payment_status = 'SUCCESS' WHERE transaction_id = $1",
                     [razorpay_order_id]
                 );
+
+                await db.query(
+                    "INSERT INTO buy_course (course_name, user_id, course_id) VALUES ((SELECT course_name FROM payments WHERE transaction_id = $1), (SELECT user_id FROM payments WHERE transaction_id = $1), (SELECT course_id FROM payments WHERE transaction_id = $1))",
+                    [razorpay_order_id]
+                );
                 res.json({ status: "SUCCESS", message: "Payment verified successfully" });
             } else {
                 // Update DB to FAILED if signature mismatch
