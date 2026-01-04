@@ -1,9 +1,20 @@
 import express from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import { connectDB } from "../db/db.js";
 
-const createPaymentRouter = (db) => {
-    const router = express.Router();
+const router = express.Router();
+
+let db;
+
+// Connect DB only once
+(async () => {
+  db = await connectDB();
+})();
+
+
+// const createPaymentRouter = (db) => {
+    // const router = express.Router();
 
     // Validate DB connection
     if (!db) {
@@ -145,7 +156,10 @@ const createPaymentRouter = (db) => {
         }
     });
 
-    return router;
-};
+    // return router;
+// };
 
-export default createPaymentRouter;
+export default router;
+
+
+// export default createPaymentRouter;
