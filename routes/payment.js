@@ -2,6 +2,8 @@ import express from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { connectDB } from "../db/db.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 const router = express.Router();
 
