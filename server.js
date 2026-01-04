@@ -5,7 +5,6 @@ import user, { setUserDB } from './routes/user.js'
 import callback from './routes/callback.js'
 import student from './routes/student.js'
 import cors from 'cors'
-// import createPaymentRouter from './routes/payment.js'
 import payment from './routes/payment.js'
 import events from './routes/events.js'
 import { configDotenv } from "dotenv";
