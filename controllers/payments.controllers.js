@@ -23,7 +23,9 @@ exports.createOrder = async (req, res) => {
             return res.status(404).json({ error: "Course not found" });
         }
 
-        const amount = course.rows[0].course_price;
+        console.log("course price" ,course.rows[0].course_price);
+        const amount = course.rows[0].course_price; 
+        
         // const razorpay = createRazorpayInstance();
         const options = {
             amount: amount * 100,
