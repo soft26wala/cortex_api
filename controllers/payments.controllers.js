@@ -9,9 +9,15 @@ let db;
 })();
 
 exports.createOrder = async (req, res) => {
-    const { course_id } = req.body;
+   try {
+      const { course_id } = req.body;
 
-    try {
+      if (!course_id) {
+          return res.status(400).json({ error: "Course ID is required" });
+      }
+
+
+   
         const course = await db.query("SELECT * FROM courses_offered WHERE course_id = $1", [course_id]);
         if (!course.rows.length) {
             return res.status(404).json({ error: "Course not found" });
