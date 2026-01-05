@@ -14,7 +14,7 @@ let db;
 // ===============================
 // CREATE callback (POSTGRESQL)
 // ===============================
-router.post("/", async (req, res) => {
+router.get("/", async (req, res) => {
   const { user_id } = req.body;
 
   if (!user_id ) {
