@@ -47,7 +47,18 @@ export const createOrder = async (req, res) => {
 
 export const verifyPayment = async (req, res) => {
     try {
-        const { order_id, payment_id, signature } = req.body;
+        const { order_id, payment_id, signature, course_id, user_id } = req.body;
+        const user = await db.query("SELECT * FROM users WHERE id::text = $1 OR email = $2", [user_id, user_id]);
+        if (!user.rows.length) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+        const userid = user.rows[0].id;
+        const course = await db.query("SELECT * FROM courses_offered WHERE course_id = $1", [course_id]);
+        if (!course.rows.length) {
+            return res.status(404).json({ success: false, message: "Course not found" });
+        }
+        const courseName = course.rows[0].course_name;
+        const courseId = course.rows[0].course_id;
 
         const secret = process.env.RAZORPAY_KEY_SECRET;
         const hmac = crypto.createHmac("sha256", secret);
@@ -55,11 +66,16 @@ export const verifyPayment = async (req, res) => {
         const generatedSignature = hmac.digest("hex");
 
         if (generatedSignature === signature) {
+
+            db.query(
+                "INSERT INTO payments (order_id, transaction_id, signature, user_id, course_name, course_id) VALUES ($1, $2, $3, $4, $5, $6)",
+                [order_id, payment_id, signature, userid, courseName, courseId]
+            );
             // Optionally, you can insert payment details into DB here if you have them
-            return res.status(200).json({ success: true, message: "Payment verified successfully" });
+            return res.status(200).json({ success: true, message: "Payment verified successfully",  });
         }
 
-        return res.status(400).json({ success: false, message: "Invalid signature" });
+        return res.status(400).json({ success: false, message: "Invalid signature"  });
     } catch (error) {
         console.error("verifyPayment error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });

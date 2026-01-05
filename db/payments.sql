@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS payments (
     course_name VARCHAR(255) NOT NULL,       -- Course ka naam
     course_id INTEGER NOT NULL,            -- Course ki ID
     payment_status VARCHAR(50) DEFAULT 'PENDING', -- Payment ka status (e.g., SUCCESS, FAILED, PENDING)
-    amount DECIMAL(10, 2),                   -- Amount kitna pay kiya
+    amount DECIMAL(10, 2),     
+    order_id VARCHAR(255),  
+    signature TEXT,            -- Amount kitna pay kiya
     payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Kis date aur time par payment hui
 );

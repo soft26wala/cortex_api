@@ -12,6 +12,3 @@ router.post("/verify-payment", verifyPayment);
 
 
 export default router;
-
-
-// export default createPaymentRouter;

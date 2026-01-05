@@ -8,6 +8,7 @@ import cors from 'cors'
 import payment from './routes/payment.js'
 import events from './routes/events.js'
 import { configDotenv } from "dotenv";
+import classroom from './routes/classroom.js'
 configDotenv()
 
 const app = express();
@@ -43,6 +44,7 @@ const startServer = async () => {
     app.use("/api/payment", payment)
     app.use("/api", events)
     app.use("/user", user) 
+    app.use("/classroom", classroom) 
     
     const PORT = process.env.PORT || 4000;
     app.listen(PORT, () => console.log("🚀 Server running on port:", PORT));
