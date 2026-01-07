@@ -15,10 +15,11 @@ let db;
 // CREATE callback (POSTGRESQL)
 // ===============================
 router.get("/", async (req, res) => {
-  const { user_id } = req.body;
+  // read user_id from query string (axios `{ params: { user_id } }`)
+  const { user_id } = req.query;
 
-  if (!user_id ) {
-    return res.status(400).json({ msg: "Your not login" });
+  if (!user_id) {
+    return res.status(400).json({ msg: "User not logged in" });
   }
 
   try {
@@ -30,9 +31,9 @@ router.get("/", async (req, res) => {
       const course = await db.query("SELECT * FROM payments WHERE user_id = $1", [userid]);
 
     res.status(200).json({
-      msg: "Callback added",
-      callback_id: result.rows[0].callback_id,
-      course
+      success: true,
+      user: user.rows[0],
+      course: course.rows
     });
 
   } catch (err) {
