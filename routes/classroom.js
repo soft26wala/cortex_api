@@ -28,11 +28,16 @@ router.get("/", async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found" });
         }
       const userid = user.rows[0].id;
-      const course = await db.query("SELECT * FROM payments WHERE user_id = $1", [userid]);
+      const payments = await db.query("SELECT * FROM payments WHERE user_id = $1", [userid]);
+
+      const courseIds = payments.rows.map(payment => 
+        payment.course_id);
+
+      const course = await db.query("SELECT * FROM courses_offered WHERE course_id = ANY($1)", [courseIds]);
+
 
     res.status(200).json({
       success: true,
-      user: user.rows[0],
       data: course.rows
     });
 
