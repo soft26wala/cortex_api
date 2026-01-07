@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
     res.status(200).json({
       success: true,
       user: user.rows[0],
-      course: course.rows
+      data: course.rows
     });
 
   } catch (err) {
@@ -41,5 +41,17 @@ router.get("/", async (req, res) => {
   }
 });
 
+
+router.get("/all", async (req, res) => {
+  try {
+      const payments = await db.query("SELECT * FROM payments");    
+      res.status(200).json({
+          success: true,
+          data: payments.rows
+      });
+  } catch (err) {
+      return res.status(500).json(err);
+  }
+});
 
 export default router;
