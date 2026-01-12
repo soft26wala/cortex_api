@@ -24,7 +24,7 @@ export async function connectDB() {
       "callback.sql",
       "student.sql",
       "payments.sql",
-      "events.sql"
+      "event.sql"
     ];
 
     for (const file of files) {
