@@ -1,4 +1,6 @@
-﻿import { neon } from "@neondatabase/serverless";
+﻿import pkg from "@neondatabase/serverless";
+const { Pool } = pkg; // 'neon' ki jagah 'Pool' use karein
+
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -9,42 +11,39 @@ configDotenv();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Neon mein hum ek connection string (DATABASE_URL) use karte hain
-const sql = neon(process.env.DATABASE_URL);
+// Pool connection setup
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export async function connectDB() {
   try {
-    console.log("🚀 Connecting to Neon Database...");
+    console.log("🚀 Connecting to Neon via Pool...");
 
-    // Step 1: SQL Files load karein
     const files = [
       "buy_course.sql",
       "user.sql",
       "courses_offered.sql",
       "callback.sql",
       "student.sql",
-      "payments.sql",
-      "event.sql"
+      "event.sql",
+      "payments.sql"
     ];
 
     for (const file of files) {
       const filePath = path.join(__dirname, file);
-      const schema = fs.readFileSync(filePath, "utf8");
-      
-      // Neon/Serverless mein raw string queries ke liye sql.query() use karte hain:
-      await sql.query(schema);
-      console.log(`📑 Executed ${file}`);
+      if (fs.existsSync(filePath)) {
+        const schema = fs.readFileSync(filePath, "utf8");
+        
+        // pool.query multiple commands (semicolon separated) ko handle kar leta hai
+        await pool.query(schema); 
+        console.log(`📑 Executed ${file}`);
+      }
     }
 
-    // Step 2: Ensure required columns exist
-    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);`;
+    // Column check
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);");
     console.log("✅ Ensured 'password' column exists.");
 
-    console.log("✅ All tables synced with Neon!");
-    
-    // Neon HTTP client stateless hota hai, isliye 'db' object hi 'sql' hai
-    return sql;
-
+    return pool; // Ab aap pool.query() use kar payenge pure app mein
   } catch (err) {
     console.error("❌ Neon Connection Error:", err.message);
     throw err;
