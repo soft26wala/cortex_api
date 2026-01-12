@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "@paypal/checkout-server-sdk": "^1.0.3",
     "bcrypt": "^6.0.0",
     "cloudinary": "^1.41.3",
