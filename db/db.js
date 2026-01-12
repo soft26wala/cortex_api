@@ -31,8 +31,8 @@ export async function connectDB() {
       const filePath = path.join(__dirname, file);
       const schema = fs.readFileSync(filePath, "utf8");
       
-      // Neon/Serverless mein raw string queries aise pass hoti hain:
-      await sql(schema);
+      // Neon/Serverless mein raw string queries ke liye sql.query() use karte hain:
+      await sql.query(schema);
       console.log(`📑 Executed ${file}`);
     }
 
