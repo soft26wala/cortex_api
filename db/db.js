@@ -1,6 +1,6 @@
-﻿import pkg from "@neondatabase/serverless";
-const { Pool } = pkg; // 'neon' ki jagah 'Pool' use karein
-
+﻿// import pkg from "@neondatabase/serverless";
+// const { Pool } = pkg; // 'neon' ki jagah 'Pool' use karein
+import { Pool } from "@neondatabase/serverless";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
