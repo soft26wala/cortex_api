@@ -31,7 +31,7 @@ const query = `
 const values = [course_name, user_id, course_id];
 
 try {
-    const result = await pool.query(query, values);
+    const result = await db.query(query, values);
     res.status(200).json({
         success: true,
         message: "Course purchased and recorded successfully!",
@@ -48,7 +48,7 @@ router.get("/", async (req, res) => {
     const { userId } = req.params; // Ya req.user.id agar aap JWT use kar rahe hain
 
     try {
-        const courses = await pool.query(
+        const courses = await db.query(
             "SELECT * FROM buy_course WHERE user_id = $1", 
             [userId]
         );

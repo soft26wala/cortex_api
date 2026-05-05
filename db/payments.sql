@@ -10,3 +10,7 @@ CREATE TABLE IF NOT EXISTS payments (
     signature TEXT,            -- Amount kitna pay kiya
     payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Kis date aur time par payment hui
 );
+
+CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_course_id ON payments(course_id);
+CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(order_id);

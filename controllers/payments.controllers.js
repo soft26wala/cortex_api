@@ -66,13 +66,16 @@ export const verifyPayment = async (req, res) => {
         const generatedSignature = hmac.digest("hex");
 
         if (generatedSignature === signature) {
-
-            db.query(
-                "INSERT INTO payments (order_id, transaction_id, signature, user_id, course_name, course_id) VALUES ($1, $2, $3, $4, $5, $6)",
-                [order_id, payment_id, signature, userid, courseName, courseId]
-            );
-            // Optionally, you can insert payment details into DB here if you have them
-            return res.status(200).json({ success: true, message: "Payment verified successfully",  });
+            try {
+                await db.query(
+                    "INSERT INTO payments (order_id, transaction_id, signature, user_id, course_name, course_id) VALUES ($1, $2, $3, $4, $5, $6)",
+                    [order_id, payment_id, signature, userid, courseName, courseId]
+                );
+            } catch (dbError) {
+                console.error("Payment insertion error:", dbError);
+                return res.status(500).json({ success: false, message: "Payment recorded but database error occurred" });
+            }
+            return res.status(200).json({ success: true, message: "Payment verified successfully" });
         }
 
         return res.status(400).json({ success: false, message: "Invalid signature"  });
