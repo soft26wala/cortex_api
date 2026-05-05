@@ -95,10 +95,9 @@ export async function connectDB() {
       "callback.sql",            // Independent
       "student.sql",             // Independent
       "event.sql",               // Independent
-      "payments.sql",            // After other tables are created
-      "chatbotflow.sql",         // Independent
-      "builder.sql",             // Independent
+      "payments.sql",            // After other tables are created       // Independent
       "clients.sql",             // Independent
+      "builder.sql",             // Independent
     ];
 
     for (const file of files) {
