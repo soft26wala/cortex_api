@@ -1,14 +1,14 @@
 import express from "express";
 import { connectDB } from "./db/db.js";
-import courseRoutes from "./routes/courseRoutes.js";
+import courseRoutes, { setCourseDB } from "./routes/courseRoutes.js";
 import user, { setUserDB } from "./routes/user.js";
-import callback from "./routes/callback.js";
-import student from "./routes/student.js";
+import callback, { setCallbackDB } from "./routes/callback.js";
+import student, { setStudentDB } from "./routes/student.js";
 import cors from "cors";
 import payment from "./routes/payment.js";
-import events from "./routes/events.js";
+import events, { setEventsDB } from "./routes/events.js";
 import { configDotenv } from "dotenv";
-import classroom from "./routes/classroom.js";
+import classroom, { setClassroomDB } from "./routes/classroom.js";
 import builder, { setBuilderDB } from "./routes/builder.js";
 import clients, { setClientDB } from "./routes/client.js";
 // import chatbot from './routes/chatbot.js'
@@ -51,6 +51,15 @@ const startServer = async () => {
     setBuilderDB(db);
     setClientDB(db);
     setWebhookDB(db);
+    setCourseDB(db);
+    setCallbackDB(db);
+    setStudentDB(db);
+    setEventsDB(db);
+    setClassroomDB(db);
+    app.use("/webhook", (req, res, next) => {
+      console.log("👉 WEBHOOK HIT:", req.method, req.originalUrl);
+      next();
+    });
     app.use("/webhook", webhook);
     // Register routes AFTER database connection is established
     app.use("/add-course", courseRoutes);

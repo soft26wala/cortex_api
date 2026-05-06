@@ -9,6 +9,10 @@ export const setWebhookDB = (database) => {
 }
 
 // 🔥 VERIFY
+router.options("/", (req, res) => {
+  res.sendStatus(200)
+})
+
 router.get("/", (req, res) => {
   const VERIFY_TOKEN = "my_verify_token"
 

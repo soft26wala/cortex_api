@@ -1,14 +1,14 @@
 import express from 'express';
-import { connectDB } from "../db/db.js";
 
 const router = express.Router();
 
-let db;
+// Store db reference (will be set by server.js)
+let db = null;
 
-// Connect DB only once
-(async () => {
-  db = await connectDB();
-})();
+// Export function to set db connection
+export function setEventsDB(database) {
+  db = database;
+}
 
 
 

@@ -1,19 +1,20 @@
 // routes/courseRoutes.js
 import express from "express";
-import { connectDB } from "../db/db.js";
 import multer from 'multer';
 import cloudinary from '../cloudinaryConfig.js'
 
 const router = express.Router();
-let db;
+
+// Store db reference (will be set by server.js)
+let db = null;
+
+// Export function to set db connection
+export function setCourseDB(database) {
+  db = database;
+}
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-
-// Connect DB (PostgreSQL)
-(async () => {
-  db = await connectDB();
-})();
 
 // ======================================================
 // ADD COURSE (PostgreSQL Version)

@@ -1,13 +1,14 @@
 import express from "express";
-import { connectDB } from "../db/db.js";
 
 const router = express.Router();
-let db;
 
-// Connect DB (PostgreSQL)
-(async () => {
-  db = await connectDB();
-})();
+// Store db reference (will be set by server.js)
+let db = null;
+
+// Export function to set db connection
+export function setStudentDB(database) {
+  db = database;
+}
 // GET all students
 router.get("/", async (req, res) => {
   try {
