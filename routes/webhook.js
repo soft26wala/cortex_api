@@ -14,6 +14,8 @@ router.options("/", (req, res) => {
 })
 
 router.get("/", (req, res) => {
+  console.log("verify req in" );
+  
   const VERIFY_TOKEN = "my_verify_token"
 
   const mode = req.query["hub.mode"]
@@ -61,11 +63,14 @@ const runNode = async (client, to, node) => {
   if (node.buttons?.length) {
     await sendButtons(client, to, finalText || "Choose option:", node.buttons)
   }
+  console.log("verify req done" );
+
 }
 
 
 // 🔥 RECEIVE MESSAGE
 router.post("/", async (req, res) => {
+  console.log("📩 Incoming webhook request:", req.body);
   try {
     const entry = req.body.entry?.[0]
     const change = entry?.changes?.[0]
@@ -76,6 +81,8 @@ router.post("/", async (req, res) => {
 
     const from = message.from
     const phoneNumberId = value.metadata.phone_number_id
+    console.log("📩 Incoming message from phoneNumberId:", phoneNumberId);
+    
 
     const text = message.text?.body?.toLowerCase() || ""
     const buttonReply = message.interactive?.button_reply?.id
@@ -89,11 +96,15 @@ router.post("/", async (req, res) => {
     )
 
     const client = clientRes.rows[0]
+    console.log("client :", client);
+    
     if (!client) {
       console.log("❌ Client not found")
       return res.sendStatus(200)
     }
-
+  
+    console.log("cid: ", client.id);
+    
     // 🔥 STEP 2: LOAD FLOW
     const flowRes = await db.query(
       `SELECT data FROM flows
@@ -102,6 +113,8 @@ router.post("/", async (req, res) => {
        LIMIT 1`,
       [client.id]
     )
+
+    console.log("flow:", flowRes.rows[0]?.data);
 
     const flow = flowRes.rows[0]?.data
     if (!flow) return res.sendStatus(200)
