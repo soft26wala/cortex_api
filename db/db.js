@@ -8,22 +8,22 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 
-// const pool = new Pool({
-//   user: process.env.DB_USER,
-//   host: process.env.DB_HOST,
-//   database: process.env.DB_NAME,
-//   password: process.env.DB_PASS,
-//   port: process.env.DB_PORT,
-//   max: 10,                    // Reduced from 20 to avoid lock contention
-//   min: 2,                     // Keep minimum connections ready
-//   idleTimeoutMillis: 10000,   // Reduced from 30s to close idle connections faster
-//   connectionTimeoutMillis: 3000, // Reduced to 3s for faster failure detection
-//   statement_timeout: 10000,   // Reduced to 10s to prevent long-running queries
-//   query_timeout: 10000,       // Additional query timeout layer
-// });
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASS,
+  port: process.env.DB_PORT,
+  max: 10,                    // Reduced from 20 to avoid lock contention
+  min: 2,                     // Keep minimum connections ready
+  idleTimeoutMillis: 10000,   // Reduced from 30s to close idle connections faster
+  connectionTimeoutMillis: 3000, // Reduced to 3s for faster failure detection
+  statement_timeout: 10000,   // Reduced to 10s to prevent long-running queries
+  query_timeout: 10000,       // Additional query timeout layer
+});
 
 // Handle pool errors
 pool.on("error", (err, client) => {

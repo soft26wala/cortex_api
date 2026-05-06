@@ -43,10 +43,10 @@ const startServer = async () => {
     // Pass db to user routes
     setUserDB(db);
 
-    app.use((req, res, next) => {
-      console.log("👉 HIT:", req.method, req.url);
-      next();
-    });
+    // app.use((req, res, next) => {
+    //   console.log("👉 HIT:", req.method, req.url);
+    //   next();
+    // });
 
     setBuilderDB(db);
     setClientDB(db);

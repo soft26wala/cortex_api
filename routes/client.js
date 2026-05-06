@@ -6,19 +6,62 @@ export const setClientDB = (database) => { db = database }
 
 // 🔥 CREATE CLIENT
 router.post("/", async (req, res) => {
-  const { name, phone, userId } = req.body
+  try {
+    const {
+      userId,
+      name,
+      phone,
+      phone_number_id,
+      access_token,
+      waba_id,
+      plan_name,
+      total_messages,
+      expires_at
+    } = req.body
 
-  const slug = name.toLowerCase().replace(/\s+/g, "-")
+    const slug = name
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+$/, "")
 
-  const result = await db.query(
-    `INSERT INTO clients (user_id, name, phone, slug)
-     VALUES ($1,$2,$3,$4)
-     RETURNING *`,
-    [userId, name, phone, slug]
-  )
+    const result = await db.query(
+      `INSERT INTO clients (
+        user_id,
+        name,
+        phone,
+        phone_number_id,
+        access_token,
+        waba_id,
+        plan_name,
+        total_messages,
+        expires_at,
+        slug
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      RETURNING *`,
+      [
+        userId,
+        name,
+        phone,
+        phone_number_id || null,
+        access_token || null,
+        waba_id || null,
+        plan_name || "Basic",
+        total_messages || 1000,
+        expires_at || null,
+        slug
+      ]
+    )
 
-  res.json(result.rows[0])
+    res.json(result.rows[0])
+
+  } catch (err) {
+    console.log(err)
+    res.status(500).json({ error: "Create failed" })
+  }
 })
+
 
 // 🔥 GET ALL CLIENTS (admin wise)
 router.get("/:userId", async (req, res) => {
@@ -46,18 +89,53 @@ router.get("/slug/:slug", async (req, res) => {
 
 // 🔥 UPDATE CLIENT
 router.put("/:id", async (req, res) => {
-  const { id } = req.params
-  const { name, phone } = req.body
+  try {
+    const { id } = req.params
 
-  const result = await db.query(
-    `UPDATE clients
-     SET name=$1, phone=$2
-     WHERE id=$3
-     RETURNING *`,
-    [name, phone, id]
-  )
+    const {
+      name,
+      phone,
+      phone_number_id,
+      access_token,
+      waba_id,
+      plan_name,
+      total_messages,
+      expires_at
+    } = req.body
 
-  res.json(result.rows[0])
+    const result = await db.query(
+      `UPDATE clients
+       SET
+         name = $1,
+         phone = $2,
+         phone_number_id = $3,
+         access_token = $4,
+         waba_id = $5,
+         plan_name = $6,
+         total_messages = $7,
+         expires_at = $8
+       WHERE id = $9
+       RETURNING *`,
+      [
+        name,
+        phone,
+        phone_number_id,
+        access_token,
+        waba_id,
+        plan_name,
+        total_messages,
+        expires_at,
+        id
+      ]
+    )
+
+    res.json(result.rows[0])
+
+  } catch (err) {
+    console.log(err)
+    res.status(500).json({ error: "Update failed" })
+  }
 })
+
 
 export default router
