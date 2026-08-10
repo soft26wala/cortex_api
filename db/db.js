@@ -1,4 +1,4 @@
-﻿import { Pool } from "pg";
+import { Pool } from "pg";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -112,6 +112,8 @@ export async function connectDB() {
       "payments.sql",            // After other tables are created       // Independent
       "clients.sql",             // Independent
       "builder.sql",             // Independent
+      "sessions.sql",            // Flow session tracking
+      "projects.sql",            // Client Projects Table
     ];
 
     for (const file of files) {

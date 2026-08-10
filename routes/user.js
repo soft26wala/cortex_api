@@ -59,13 +59,13 @@ router.post("/social-login", async (req, res) => {
       // Agar naya user hai (Social Signup), toh insert karein
       // Password yahan NULL jayega
       const result = await db.query(
-        "INSERT INTO users (name, email, photo, provider, password) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email",
-        [name, email, photo, provider, null] 
+        "INSERT INTO users (name, email, photo, provider, password, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, email, photo, role",
+        [name, email, photo, provider, null, "user"] 
       );
       user = result.rows[0];
     }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user.id, role: user.role || 'user' }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.status(200).json({ message: "Social Login Success", token, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -77,7 +77,7 @@ router.post("/social-login", async (req, res) => {
 // POST: /api/auth/signup-manual
 router.post("/signup-manual", upload.single("photo"), async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -92,10 +92,6 @@ router.post("/signup-manual", upload.single("photo"), async (req, res) => {
     let imageUrl = null;
 
     if (req.file) {
-      // --- 🚀 Cloudinary अपलोड लॉजिक यहाँ शुरू होता है 🚀 ---
-      // Multer is currently using diskStorage in this file. When files are stored
-      // on disk, `req.file.buffer` will be undefined. In that case, read the
-      // file from disk and convert to base64 before uploading to Cloudinary.
       let fileBuffer;
       if (req.file.buffer) {
         fileBuffer = req.file.buffer;
@@ -122,13 +118,14 @@ router.post("/signup-manual", upload.single("photo"), async (req, res) => {
     // 3. Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4. Save to Database (Ab hum filename ki jagah photoUrl save kar rahe hain)
+    // 4. Save to Database with role (default: 'user')
+    const userRole = role || "user";
     const result = await db.query(
-      "INSERT INTO users (name, email, photo, password, provider) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, photo",
-      [name, email, imageUrl, hashedPassword, "manual"]
+      "INSERT INTO users (name, email, photo, password, provider, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, email, photo, role",
+      [name, email, imageUrl, hashedPassword, "manual", userRole]
     );
 
-    const token = jwt.sign({ id: result.rows[0].id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: result.rows[0].id, role: userRole }, process.env.JWT_SECRET, { expiresIn: '1d' });
     
     res.status(201).json({ 
       message: "Manual Signup Success", 
@@ -243,7 +240,7 @@ router.post("/login", async (req, res) => {
 
     // 4. JWT Token generate karein
     const token = jwt.sign(
-      { id: user.id, email: user.email }, 
+      { id: user.id, email: user.email, role: user.role || 'user' }, 
       process.env.JWT_SECRET, 
       { expiresIn: '7d' } // Token 7 din tak valid rahega
     );
@@ -256,7 +253,8 @@ router.post("/login", async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        photo: user.photo
+        photo: user.photo,
+        role: user.role || 'user'
       }
     });
 

@@ -9,14 +9,10 @@ export const sendText = async (client, to, text) => {
       },
       body: JSON.stringify({
         messaging_product: "whatsapp",
+        recipient_type: "individual",
         to,
-        type: "template",
-        template: {
-          name: "jaspers_market_plain_text_v1",
-          language: {
-            code: "en_US",
-          },
-        },
+        type: "text",
+        text: { preview_url: false, body: text },
       }),
     },
   );

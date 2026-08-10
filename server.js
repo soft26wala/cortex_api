@@ -11,6 +11,7 @@ import { configDotenv } from "dotenv";
 import classroom, { setClassroomDB } from "./routes/classroom.js";
 import builder, { setBuilderDB } from "./routes/builder.js";
 import clients, { setClientDB } from "./routes/client.js";
+import projects, { setProjectsDB } from "./routes/projects.js";
 // import chatbot from './routes/chatbot.js'
 import webhook, { setWebhookDB } from "./routes/webhook.js";
 configDotenv();
@@ -50,6 +51,7 @@ const startServer = async () => {
 
     setBuilderDB(db);
     setClientDB(db);
+    setProjectsDB(db);
     setWebhookDB(db);
     setCourseDB(db);
     setCallbackDB(db);
@@ -67,11 +69,13 @@ const startServer = async () => {
     app.use("/students", student);
     // app.use("/api/payment", createPaymentRouter(db))
     app.use("/api/payment", payment);
+    app.use("/api/projects", projects);
     app.use("/api", events);
     app.use("/user", user);
     app.use("/classroom", classroom);
     // app.use("/chatbot", chatbot)
     app.use("/flow", builder);
+    app.use("/flows", builder);
     app.use("/clients", clients);
 
     const PORT = process.env.PORT || 4000;
